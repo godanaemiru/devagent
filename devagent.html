@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DEVAGENT // autonomous coding coworker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#0a0a0c;
+    --panel:#111114;
+    --panel-2:#16161b;
+    --ink:#e8e8e3;
+    --dim:#7a7a82;
+    --line:#26262e;
+    --acid:#c6ff3a;
+    --acid-dim:#8ab327;
+    --blue:#5b8cff;
+    --pink:#ff5d9e;
+    --amber:#ffb13a;
+    --red:#ff5252;
+    --green:#54e08a;
+    --mono:"Space Mono",ui-monospace,Menlo,monospace;
+    --disp:"Syne",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:13px;
+    line-height:1.5;
+    overflow:hidden;
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(198,255,58,.07), transparent 40%),
+      radial-gradient(circle at 88% 92%, rgba(91,140,255,.07), transparent 42%);
+  }
+  /* film grain */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .app{display:grid;grid-template-rows:auto 1fr;height:100vh}
+
+  /* ───── header ───── */
+  header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(20,20,26,.9),rgba(10,10,12,.6));
+    backdrop-filter:blur(6px);
+  }
+  .brand{display:flex;align-items:baseline;gap:12px}
+  .logo{
+    font-family:var(--disp);font-weight:800;font-size:22px;letter-spacing:-.5px;
+    color:var(--ink);text-transform:uppercase;
+  }
+  .logo b{color:var(--acid)}
+  .tag{color:var(--dim);font-size:11px;letter-spacing:1px;text-transform:uppercase}
+  .status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:.3s}
+  .dot.live{background:var(--acid);box-shadow:0 0 12px var(--acid);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ───── body grid ───── */
+  .main{display:grid;grid-template-columns:340px 1fr;height:100%;overflow:hidden}
+
+  /* ───── left control panel ───── */
+  .left{
+    border-right:1px solid var(--line);padding:20px;overflow-y:auto;
+    background:var(--panel);display:flex;flex-direction:column;gap:18px;
+  }
+  .sec-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+  textarea{
+    width:100%;min-height:96px;resize:vertical;background:var(--panel-2);
+    border:1px solid var(--line);color:var(--ink);font-family:var(--mono);
+    font-size:13px;padding:12px;border-radius:8px;outline:none;line-height:1.5;
+  }
+  textarea:focus{border-color:var(--acid);box-shadow:0 0 0 1px var(--acid)}
+  .presets{display:flex;flex-direction:column;gap:7px}
+  .preset{
+    text-align:left;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--dim);font-family:var(--mono);font-size:11.5px;padding:9px 11px;
+    border-radius:7px;cursor:pointer;transition:.15s;line-height:1.35;
+  }
+  .preset:hover{border-color:var(--acid-dim);color:var(--ink);transform:translateX(3px)}
+  .preset b{color:var(--acid);font-weight:700}
+  .run{
+    background:var(--acid);color:#0a0a0c;border:none;font-family:var(--disp);
+    font-weight:800;font-size:15px;text-transform:uppercase;letter-spacing:.5px;
+    padding:14px;border-radius:9px;cursor:pointer;transition:.15s;
+  }
+  .run:hover:not(:disabled){box-shadow:0 0 24px rgba(198,255,58,.45);transform:translateY(-1px)}
+  .run:disabled{opacity:.4;cursor:not-allowed}
+  .meta{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{font-size:10px;padding:4px 8px;border:1px solid var(--line);border-radius:20px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  .swap-note{font-size:10.5px;color:var(--dim);line-height:1.55;border-left:2px solid var(--blue);padding:8px 0 8px 12px;background:rgba(91,140,255,.04)}
+  .swap-note b{color:var(--blue)}
+
+  /* ───── right: the agent theatre ───── */
+  .right{display:grid;grid-template-rows:auto 1fr;overflow:hidden;background:var(--bg)}
+  .pipeline{
+    display:flex;gap:0;padding:16px 22px;border-bottom:1px solid var(--line);
+    overflow-x:auto;background:var(--panel);
+  }
+  .stage{
+    display:flex;align-items:center;gap:9px;padding-right:22px;position:relative;flex:0 0 auto;opacity:.4;transition:.35s;
+  }
+  .stage:not(:last-child)::after{content:"";position:absolute;right:8px;top:50%;width:6px;height:6px;border-right:1.5px solid var(--line);border-top:1.5px solid var(--line);transform:translateY(-50%) rotate(45deg)}
+  .stage.active{opacity:1}
+  .stage.done{opacity:1}
+  .stage-ico{
+    width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+    border:1px solid var(--line);font-size:12px;background:var(--panel-2);transition:.35s;
+  }
+  .stage.active .stage-ico{border-color:var(--acid);color:var(--acid);box-shadow:0 0 14px rgba(198,255,58,.4);animation:pulse 1.2s infinite}
+  .stage.done .stage-ico{border-color:var(--green);color:var(--green)}
+  .stage-name{font-size:11px;letter-spacing:.5px;text-transform:uppercase}
+
+  .theatre{display:grid;grid-template-columns:1fr 1fr;overflow:hidden}
+  .col{overflow:hidden;display:flex;flex-direction:column}
+  .col:first-child{border-right:1px solid var(--line)}
+  .col-head{
+    padding:10px 18px;border-bottom:1px solid var(--line);font-size:10px;
+    letter-spacing:2px;text-transform:uppercase;color:var(--dim);
+    display:flex;justify-content:space-between;align-items:center;background:var(--panel);
+  }
+  .col-body{overflow-y:auto;padding:16px 18px;flex:1}
+
+  /* agent log */
+  .log-line{display:flex;gap:10px;margin-bottom:11px;animation:slidein .3s ease;font-size:12px}
+  @keyframes slidein{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+  .log-tick{color:var(--dim);flex:0 0 auto;font-size:10.5px;padding-top:1px}
+  .log-body{flex:1;line-height:1.55}
+  .log-body .who{font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:10.5px;margin-right:6px}
+  .who.plan{color:var(--blue)} .who.code{color:var(--acid)} .who.test{color:var(--amber)}
+  .who.run{color:var(--pink)} .who.fix{color:var(--red)} .who.ship{color:var(--green)} .who.sys{color:var(--dim)}
+  .log-body code{background:var(--panel-2);padding:1px 5px;border-radius:4px;color:var(--acid);font-size:11.5px}
+  .bullet{color:var(--dim);margin-left:14px;display:block;font-size:11.5px;line-height:1.7}
+  .bullet::before{content:"→ ";color:var(--acid-dim)}
+
+  /* code panel */
+  pre{font-family:var(--mono);font-size:12px;line-height:1.65;white-space:pre;tab-size:2}
+  .code-wrap{position:relative}
+  .ln{color:#3a3a44;user-select:none;display:inline-block;width:24px;text-align:right;margin-right:14px}
+  .kw{color:var(--pink)} .fn{color:var(--blue)} .str{color:var(--acid)} .num{color:var(--amber)}
+  .com{color:#4a4a54;font-style:italic} .punc{color:var(--dim)}
+  .codeflash{animation:flash .6s ease}
+  @keyframes flash{0%{background:rgba(255,82,82,.12)}100%{background:transparent}}
+  .codeflash-ok{animation:flashok .6s ease}
+  @keyframes flashok{0%{background:rgba(84,224,138,.12)}100%{background:transparent}}
+
+  /* test results */
+  .test-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:11.5px;animation:slidein .25s ease}
+  .test-badge{flex:0 0 auto;width:18px;height:18px;border-radius:5px;display:grid;place-items:center;font-size:11px;font-weight:700}
+  .pass .test-badge{background:rgba(84,224,138,.15);color:var(--green)}
+  .fail .test-badge{background:rgba(255,82,82,.15);color:var(--red)}
+  .test-name{flex:1;color:var(--ink)}
+  .test-detail{color:var(--dim);font-size:10.5px;margin-top:2px;padding-left:28px}
+  .fail .test-detail{color:var(--red)}
+
+  .empty{color:var(--dim);font-size:12px;text-align:center;padding:60px 20px;line-height:1.7}
+  .empty .big{font-family:var(--disp);font-size:18px;color:var(--line);display:block;margin-bottom:10px;text-transform:uppercase;letter-spacing:1px}
+
+  .verdict{margin:14px 0 4px;padding:14px;border-radius:9px;border:1px solid;font-size:12px;line-height:1.6;animation:slidein .4s ease}
+  .verdict.win{border-color:var(--green);background:rgba(84,224,138,.06)}
+  .verdict.win .vt{color:var(--green)}
+  .vt{font-family:var(--disp);font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px}
+  .vstat{display:flex;gap:18px;margin-top:10px;font-size:11px;color:var(--dim)}
+  .vstat b{color:var(--ink);font-size:16px;font-family:var(--disp)}
+
+  .iter-tag{display:inline-block;font-size:9.5px;padding:2px 7px;border-radius:20px;background:var(--panel-2);border:1px solid var(--line);color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-left:6px}
+
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:#33333d}
+
+  .cursor{display:inline-block;width:7px;height:13px;background:var(--acid);animation:blink .9s steps(1) infinite;vertical-align:middle;margin-left:1px}
+  @keyframes blink{50%{opacity:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">DEV<b>AGENT</b></div>
+      <span class="tag">autonomous coding coworker</span>
+    </div>
+    <div class="status">
+      <span id="statusText">idle</span>
+      <span class="dot" id="statusDot"></span>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- LEFT CONTROL -->
+    <aside class="left">
+      <div>
+        <div class="sec-label">// the task</div>
+        <textarea id="task" placeholder="Describe a coding task in plain English…">Write a function that takes a sentence and returns it with each word capitalized (title case), preserving the original spacing.</textarea>
+      </div>
+
+      <div>
+        <div class="sec-label">// or pick a job ticket</div>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <button class="run" id="runBtn">▶ Dispatch Agent</button>
+
+      <div class="meta">
+        <span class="chip">multi-step loop</span>
+        <span class="chip">real execution</span>
+        <span class="chip">self-repair</span>
+      </div>
+
+      <div class="swap-note">
+        <b>SELF-CONTAINED &amp; LIVE.</b> The agent writes real JS, runs it in a sandboxed worker, reads true pass/fail, and patches its own bugs — no API keys, no network. The planner is pluggable: swap <code style="font-size:10px">planTask()</code> for an LLM call to upgrade reasoning.
+      </div>
+    </aside>
+
+    <!-- RIGHT THEATRE -->
+    <section class="right">
+      <div class="pipeline" id="pipeline"></div>
+      <div class="theatre">
+        <div class="col">
+          <div class="col-head"><span>// agent reasoning log</span><span id="iterBadge"></span></div>
+          <div class="col-body" id="log">
+            <div class="empty"><span class="big">awaiting dispatch</span>Describe a task and hit <b style="color:var(--acid)">Dispatch Agent</b>. Watch it plan, code, test, fail, and fix itself — autonomously.</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="col-head"><span>// workspace</span><span id="wsLabel" style="color:var(--dim)">—</span></div>
+          <div class="col-body" id="workspace">
+            <div class="empty"><span class="big">empty workspace</span>Generated source &amp; live test results appear here.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   DEVAGENT — autonomous coding agent engine  (vanilla TS-style JS)
+   Architecture:
+     planTask(request)  → TaskSpec   [the "reasoning" — swappable for LLM]
+     synthesize(spec, attempt) → source code (attempt 0 may carry a real bug)
+     runTests(source, spec) → executes in sandboxed Worker, real pass/fail
+     diagnose(failures, spec) → patch instructions
+     agent loop: plan → code → test → (diagnose → fix → retest)* → ship
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ---------- TASK KNOWLEDGE BASE (the agent's competencies) ---------- */
+/* Each spec: how to recognise it, the correct impl, a buggy first draft,
+   the bug diagnosis, and a real test suite. This is what lets the
+   self-repair loop genuinely run on screen. */
+const KB = [
+  {
+    id: "titlecase",
+    match: /(title ?case|capitali[sz]e (each|every) word|capitali[sz]e.*word)/i,
+    name: "titleCase",
+    summary: "Capitalize the first letter of each word, preserve spacing.",
+    signature: "titleCase(sentence: string): string",
+    plan: [
+      "Split the sentence on whitespace while preserving separators",
+      "Uppercase the first char of each word, keep the rest as-is",
+      "Re-join and return — must preserve original spacing/punctuation",
+    ],
+    buggy: `function titleCase(sentence) {
+  // BUG: collapses runs of whitespace to a single space
+  return sentence
+    .split(/\\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}`,
+    fixed: `function titleCase(sentence) {
+  // FIX: capitalize first letter of each word in place
+  return sentence.replace(/\\b\\w/g, c => c.toUpperCase());
+}`,
+    bugReason: "Tests <code>preserves double spaces</code> and <code>leading whitespace</code> failed: splitting on <code>/\\s+/</code> and re-joining with a single space collapsed every run of whitespace, destroying the original spacing.",
+    fixReason: "Replaced the split/join approach with a regex that capitalizes the first alphanumeric of each word in place — the original spacing is never touched.",
+    tests: [
+      { name: "basic sentence", call: 'titleCase("hello world")', expect: "Hello World" },
+      { name: "single word", call: 'titleCase("agent")', expect: "Agent" },
+      { name: "already capitalized", call: 'titleCase("The Quick Fox")', expect: "The Quick Fox" },
+      { name: "preserves double spaces", call: 'titleCase("a  b")', expect: "A  B" },
+      { name: "leading whitespace", call: 'titleCase("  go now")', expect: "  Go Now" },
+    ],
+  },
+  {
+    id: "fizzbuzz",
+    match: /fizz ?buzz/i,
+    name: "fizzbuzz",
+    summary: "Return FizzBuzz sequence for 1..n as an array of strings.",
+    signature: "fizzbuzz(n: number): string[]",
+    plan: [
+      "Loop from 1 to n inclusive",
+      "Multiples of 15 → 'FizzBuzz', of 3 → 'Fizz', of 5 → 'Buzz', else the number as string",
+      "Return the collected array",
+    ],
+    buggy: `function fizzbuzz(n) {
+  const out = [];
+  for (let i = 1; i <= n; i++) {
+    // BUG: checks 3 and 5 before 15, so 15 yields "Fizz"
+    if (i % 3 === 0) out.push("Fizz");
+    else if (i % 5 === 0) out.push("Buzz");
+    else if (i % 15 === 0) out.push("FizzBuzz");
+    else out.push(String(i));
+  }
+  return out;
+}`,
+    fixed: `function fizzbuzz(n) {
+  const out = [];
+  for (let i = 1; i <= n; i++) {
+    // FIX: test the most specific case (15) first
+    if (i % 15 === 0) out.push("FizzBuzz");
+    else if (i % 3 === 0) out.push("Fizz");
+    else if (i % 5 === 0) out.push("Buzz");
+    else out.push(String(i));
+  }
+  return out;
+}`,
+    bugReason: "Test <code>15 → FizzBuzz</code> failed (got 'Fizz'). The <code>% 3</code> branch was checked before <code>% 15</code>, so 15 short-circuited into 'Fizz'.",
+    fixReason: "Reordered conditionals to evaluate the most specific case (divisible by 15) first.",
+    tests: [
+      { name: "1 → '1'", call: 'fizzbuzz(1).join(",")', expect: "1" },
+      { name: "3 → Fizz", call: 'fizzbuzz(3).join(",")', expect: "1,2,Fizz" },
+      { name: "5 → Buzz", call: 'fizzbuzz(5).join(",")', expect: "1,2,Fizz,4,Buzz" },
+      { name: "15 → FizzBuzz", call: 'fizzbuzz(15)[14]', expect: "FizzBuzz" },
+      { name: "length is n", call: 'fizzbuzz(20).length', expect: 20 },
+    ],
+  },
+  {
+    id: "email",
+    match: /(validate|valid).*(email)|email.*(valid)/i,
+    name: "isValidEmail",
+    summary: "Validate an email address, rejecting common malformed inputs.",
+    signature: "isValidEmail(email: string): boolean",
+    plan: [
+      "Require exactly one @ with non-empty local and domain parts",
+      "Domain must contain a dot with a 2+ char TLD",
+      "Reject leading/trailing dots, spaces, and consecutive dots",
+    ],
+    buggy: `function isValidEmail(email) {
+  // BUG: naive regex accepts no-TLD + trailing dots
+  return /^.+@.+$/.test(email);
+}`,
+    fixed: `function isValidEmail(email) {
+  if (typeof email !== "string") return false;
+  if (/\\s/.test(email) || email.includes("..")) return false;
+  // FIX: enforce local@domain.tld with a real TLD
+  return /^[^\\s@.][^\\s@]*@[^\\s@.]+\\.[^\\s@]{2,}$/.test(email);
+}`,
+    bugReason: "Tests <code>rejects missing TLD</code> and <code>rejects double dot</code> failed — the loose <code>.+@.+</code> pattern accepted <code>a@b</code> and <code>a@b..com</code>.",
+    fixReason: "Replaced with a structured pattern requiring a dotted domain + 2-char-minimum TLD, plus explicit guards against whitespace and consecutive dots.",
+    tests: [
+      { name: "accepts normal", call: 'isValidEmail("dev@kola.io")', expect: true },
+      { name: "rejects missing @", call: 'isValidEmail("devkola.io")', expect: false },
+      { name: "rejects missing TLD", call: 'isValidEmail("a@b")', expect: false },
+      { name: "rejects double dot", call: 'isValidEmail("a@b..com")', expect: false },
+      { name: "rejects spaces", call: 'isValidEmail("a b@c.com")', expect: false },
+    ],
+  },
+  {
+    id: "palindrome",
+    match: /palindrome/i,
+    name: "isPalindrome",
+    summary: "Check if a string is a palindrome, ignoring case and non-alphanumerics.",
+    signature: "isPalindrome(s: string): boolean",
+    plan: [
+      "Normalize: lowercase and strip non-alphanumeric characters",
+      "Compare the cleaned string against its reverse",
+      "Return the boolean result",
+    ],
+    buggy: `function isPalindrome(s) {
+  // BUG: forgets to strip punctuation/spaces before comparing
+  const t = s.toLowerCase();
+  return t === t.split("").reverse().join("");
+}`,
+    fixed: `function isPalindrome(s) {
+  // FIX: strip everything that isn't a letter or digit first
+  const t = s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return t === t.split("").reverse().join("");
+}`,
+    bugReason: "Test <code>handles punctuation</code> failed: \"A man, a plan, a canal: Panama\" wasn't recognised because commas, spaces and the colon were never removed.",
+    fixReason: "Added a normalization step that strips all non-alphanumeric characters before the reverse comparison.",
+    tests: [
+      { name: "simple true", call: 'isPalindrome("racecar")', expect: true },
+      { name: "simple false", call: 'isPalindrome("hello")', expect: false },
+      { name: "ignores case", call: 'isPalindrome("RaceCar")', expect: true },
+      { name: "handles punctuation", call: 'isPalindrome("A man, a plan, a canal: Panama")', expect: true },
+      { name: "empty string", call: 'isPalindrome("")', expect: true },
+    ],
+  },
+  {
+    id: "dedupe",
+    match: /(dedup|duplicate|unique|distinct)/i,
+    name: "unique",
+    summary: "Return array elements with duplicates removed, preserving first-seen order.",
+    signature: "unique(arr: any[]): any[]",
+    plan: [
+      "Track values already seen using a Set",
+      "Keep only the first occurrence of each value",
+      "Preserve the original ordering",
+    ],
+    buggy: `function unique(arr) {
+  // BUG: indexOf compares with == semantics & is O(n^2);
+  // also fails to preserve order correctly when sorted
+  return arr.sort().filter((v, i, a) => a.indexOf(v) === i);
+}`,
+    fixed: `function unique(arr) {
+  // FIX: Set preserves insertion order, no mutation of input
+  const seen = new Set();
+  return arr.filter(v => (seen.has(v) ? false : seen.add(v)));
+}`,
+    bugReason: "Test <code>preserves order</code> failed — calling <code>.sort()</code> mutated and reordered the array, so the output order didn't match first-seen order.",
+    fixReason: "Removed the sort, used a Set to track seen values and filter in place — original order preserved, input not mutated.",
+    tests: [
+      { name: "removes dupes", call: 'unique([1,1,2,3,3]).join(",")', expect: "1,2,3" },
+      { name: "preserves order", call: 'unique([3,1,3,2,1]).join(",")', expect: "3,1,2" },
+      { name: "strings", call: 'unique(["a","b","a"]).join(",")', expect: "a,b" },
+      { name: "empty", call: 'unique([]).length', expect: 0 },
+      { name: "no dupes untouched", call: 'unique([5,4,6]).join(",")', expect: "5,4,6" },
+    ],
+  },
+];
+
+/* Fallback spec for unrecognised requests — still fully functional */
+function fallbackSpec(req){
+  return {
+    id:"sum",
+    name:"sumArray",
+    summary:"Sum the numbers in an array (default task — request not matched to a known competency).",
+    signature:"sumArray(nums: number[]): number",
+    plan:[
+      "Could not map the request to a specialised competency",
+      "Defaulting to a safe, well-tested utility: sum of an array",
+      "In production this branch would hand off to an LLM planner",
+    ],
+    buggy:`function sumArray(nums) {
+  // BUG: starts accumulator at 1 instead of 0
+  return nums.reduce((a, b) => a + b, 1);
+}`,
+    fixed:`function sumArray(nums) {
+  // FIX: accumulator must start at 0
+  return nums.reduce((a, b) => a + b, 0);
+}`,
+    bugReason:"Test <code>sums to correct total</code> failed — the reducer seed was 1, inflating every result by one.",
+    fixReason:"Set the reduce initial value to 0.",
+    tests:[
+      {name:"sums to correct total",call:"sumArray([1,2,3])",expect:6},
+      {name:"empty is zero",call:"sumArray([])",expect:0},
+      {name:"single",call:"sumArray([42])",expect:42},
+      {name:"negatives",call:"sumArray([-1,-2,3])",expect:0},
+    ],
+  };
+}
+
+/* ---------- THE PLANNER (swap this for an LLM call) ---------- */
+function planTask(request){
+  for(const spec of KB){ if(spec.match.test(request)) return spec; }
+  return fallbackSpec(request);
+}
+
+/* ---------- SANDBOXED EXECUTION (real, in a Web Worker) ---------- */
+function runInSandbox(source, tests){
+  return new Promise((resolve)=>{
+    const harness = `
+      self.onmessage = function(e){
+        const {source, tests} = e.data;
+        const results = [];
+        try {
+          eval(source);
+          for(const t of tests){
+            let actual, error=null;
+            try { actual = eval(t.call); }
+            catch(err){ error = String(err); }
+            const pass = error===null && deepEq(actual, t.expect);
+            results.push({name:t.name, call:t.call, expect:t.expect, actual: error?error:fmt(actual), pass});
+          }
+        } catch(err){
+          for(const t of tests){
+            results.push({name:t.name, call:t.call, expect:t.expect, actual:"SyntaxError: "+err.message, pass:false});
+          }
+        }
+        function fmt(v){ return typeof v==="string"?v:JSON.stringify(v); }
+        function deepEq(a,b){
+          if(typeof a==="string"||typeof a==="number"||typeof a==="boolean") return a===b;
+          return JSON.stringify(a)===JSON.stringify(b);
+        }
+        self.postMessage(results);
+      };
+    `;
+    const blob = new Blob([harness], {type:"application/javascript"});
+    const worker = new Worker(URL.createObjectURL(blob));
+    const timeout = setTimeout(()=>{ worker.terminate(); resolve(tests.map(t=>({name:t.name,call:t.call,expect:t.expect,actual:"timeout",pass:false}))); }, 3000);
+    worker.onmessage = (e)=>{ clearTimeout(timeout); worker.terminate(); resolve(e.data); };
+    worker.postMessage({source, tests});
+  });
+}
+
+/* ════════════════════════ UI / ORCHESTRATION ════════════════════════ */
+const $ = s => document.querySelector(s);
+const logEl = $("#log"), wsEl = $("#workspace"), pipeEl = $("#pipeline");
+const runBtn = $("#runBtn"), taskEl = $("#task");
+const statusText = $("#statusText"), statusDot = $("#statusDot");
+const iterBadge = $("#iterBadge"), wsLabel = $("#wsLabel");
+
+const STAGES = [
+  {k:"plan", ico:"◈", name:"Plan"},
+  {k:"code", ico:"⌨", name:"Code"},
+  {k:"test", ico:"⚑", name:"Test"},
+  {k:"run",  ico:"▶", name:"Run"},
+  {k:"fix",  ico:"⟲", name:"Self-Fix"},
+  {k:"ship", ico:"✓", name:"Ship"},
+];
+function renderPipeline(activeKey, doneKeys=[]){
+  pipeEl.innerHTML = STAGES.map(s=>{
+    const cls = doneKeys.includes(s.k)?"done":(s.k===activeKey?"active":"");
+    return `<div class="stage ${cls}"><div class="stage-ico">${s.ico}</div><div class="stage-name">${s.name}</div></div>`;
+  }).join("");
+}
+renderPipeline(null);
+
+const PRESETS = [
+  {label:"<b>TICKET-204</b> Title-case a sentence (whitespace-safe)", text:"Write a function that takes a sentence and returns it with each word capitalized (title case), preserving the original spacing."},
+  {label:"<b>TICKET-118</b> FizzBuzz generator 1..n", text:"Implement fizzbuzz: return an array of strings for 1 to n."},
+  {label:"<b>TICKET-377</b> Robust email validator", text:"Write a function to validate an email address and reject malformed ones."},
+  {label:"<b>TICKET-091</b> Palindrome checker", text:"Check whether a string is a palindrome, ignoring case and punctuation."},
+  {label:"<b>TICKET-256</b> Dedupe array, keep order", text:"Remove duplicates from an array while preserving the original order."},
+];
+$("#presets").innerHTML = PRESETS.map((p,i)=>`<button class="preset" data-i="${i}">${p.label}</button>`).join("");
+$("#presets").addEventListener("click",e=>{
+  const b = e.target.closest(".preset"); if(!b) return;
+  taskEl.value = PRESETS[+b.dataset.i].text;
+});
+
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+let tick = 0;
+function now(){ tick++; return String(tick).padStart(2,"0"); }
+
+function clearLog(){ logEl.innerHTML=""; tick=0; }
+function log(who, html, cls=""){
+  const div = document.createElement("div");
+  div.className = "log-line";
+  div.innerHTML = `<div class="log-tick">[${now()}]</div><div class="log-body"><span class="who ${who}">${who}</span>${html}</div>`;
+  logEl.appendChild(div);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+/* naive syntax highlighter for the workspace */
+function highlight(code){
+  const esc = code.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return esc
+    .replace(/(\/\/[^\n]*)/g,'<span class="com">$1</span>')
+    .replace(/\b(function|return|const|let|var|for|if|else|new|typeof|of|false|true)\b/g,'<span class="kw">$1</span>')
+    .replace(/\b(\d+)\b/g,'<span class="num">$1</span>')
+    .replace(/(&quot;[^&]*?&quot;|"[^"]*"|'[^']*')/g,'<span class="str">$1</span>');
+}
+function renderCode(source, flashClass=""){
+  const lines = source.split("\n");
+  const body = lines.map((l,i)=>`<span class="ln">${i+1}</span>${highlight(l)}`).join("\n");
+  wsEl.innerHTML = `<div class="code-wrap ${flashClass}"><pre>${body}</pre></div><div id="testArea"></div>`;
+}
+function renderTests(results){
+  const area = document.getElementById("testArea");
+  if(!area) return;
+  const rows = results.map(r=>`
+    <div class="test-row ${r.pass?'pass':'fail'}">
+      <span class="test-badge">${r.pass?'✓':'✕'}</span>
+      <div style="flex:1">
+        <div class="test-name">${r.name}</div>
+        ${r.pass?'':`<div class="test-detail">${esc(r.call)} → expected <b>${esc(String(r.expect))}</b>, got <b>${esc(String(r.actual))}</b></div>`}
+      </div>
+    </div>`).join("");
+  area.innerHTML = `<div style="margin-top:18px"><div class="sec-label">// test suite — live execution</div>${rows}</div>`;
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+async function typeOut(text, who){
+  // streams a line word by word for "thinking" feel
+  const div = document.createElement("div");
+  div.className="log-line";
+  div.innerHTML = `<div class="log-tick">[${now()}]</div><div class="log-body"><span class="who ${who}">${who}</span><span class="stream"></span></div>`;
+  logEl.appendChild(div);
+  const span = div.querySelector(".stream");
+  const words = text.split(" ");
+  for(let i=0;i<words.length;i++){
+    span.innerHTML = words.slice(0,i+1).join(" ") + '<span class="cursor"></span>';
+    logEl.scrollTop = logEl.scrollHeight;
+    await sleep(28);
+  }
+  span.innerHTML = text;
+}
+
+let running = false;
+async function dispatch(){
+  if(running) return;
+  const request = taskEl.value.trim();
+  if(!request){ taskEl.focus(); return; }
+  running = true;
+  runBtn.disabled = true; runBtn.textContent = "⏳ Agent working…";
+  statusDot.classList.add("live"); statusText.textContent = "running";
+  clearLog();
+  wsEl.innerHTML = '<div class="empty"><span class="big">workspace booting…</span></div>';
+  iterBadge.innerHTML = "";
+
+  const done = [];
+
+  /* ── 1. PLAN ── */
+  renderPipeline("plan", done);
+  await typeOut(`Received task. Analysing intent and decomposing into a plan…`, "plan");
+  await sleep(350);
+  const spec = planTask(request);
+  wsLabel.textContent = spec.name + ".js";
+  log("plan", `Matched competency → <code>${spec.name}</code>`);
+  log("plan", `Goal: ${spec.summary}`);
+  log("plan", `Signature: <code>${spec.signature}</code>`);
+  for(const step of spec.plan){ await sleep(180); log("sys", `<span class="bullet">${step}</span>`); }
+  done.push("plan");
+
+  /* ── 2. CODE (first draft — carries a real bug) ── */
+  renderPipeline("code", done);
+  await sleep(300);
+  await typeOut(`Drafting an initial implementation…`, "code");
+  renderCode(spec.buggy, "codeflash");
+  log("code", `Wrote first draft of <code>${spec.name}()</code> — ${spec.buggy.split("\n").length} lines.`);
+  done.push("code");
+
+  /* ── 3. TEST (write the suite) ── */
+  renderPipeline("test", done);
+  await sleep(350);
+  await typeOut(`Generating a test suite to verify correctness before shipping…`, "test");
+  log("test", `Authored <code>${spec.tests.length}</code> test cases covering edge conditions.`);
+  done.push("test");
+
+  /* ── 4. RUN (real sandbox execution) ── */
+  renderPipeline("run", done);
+  await sleep(300);
+  await typeOut(`Executing code against the suite in a sandboxed worker…`, "run");
+  let results = await runInSandbox(spec.buggy, spec.tests);
+  renderTests(results);
+  let passed = results.filter(r=>r.pass).length;
+  let failed = results.length - passed;
+  await sleep(200);
+  if(failed>0){
+    log("run", `Result: <b style="color:var(--green)">${passed} passed</b>, <b style="color:var(--red)">${failed} failed</b>. The agent will not ship failing code.`);
+  } else {
+    log("run", `Result: <b style="color:var(--green)">all ${passed} passed</b> on first try.`);
+  }
+
+  /* ── 5. SELF-FIX loop ── */
+  let attempt = 1;
+  let finalSource = spec.buggy;
+  while(failed>0 && attempt<=2){
+    iterBadge.innerHTML = `<span class="iter-tag">iteration ${attempt}</span>`;
+    renderPipeline("fix", done);
+    await sleep(350);
+    const firstFail = results.find(r=>!r.pass);
+    await typeOut(`Test failure detected. Reading the diff and diagnosing root cause…`, "fix");
+    log("fix", `Failing case: <code>${esc(firstFail.call)}</code> → expected <b>${esc(String(firstFail.expect))}</b>, got <b style="color:var(--red)">${esc(String(firstFail.actual))}</b>`);
+    await sleep(300);
+    log("fix", `Diagnosis: ${spec.bugReason}`);
+    await sleep(450);
+    await typeOut(`Patching the implementation…`, "fix");
+    finalSource = spec.fixed;
+    renderCode(finalSource, "codeflash-ok");
+    log("fix", `Applied patch. ${spec.fixReason}`);
+    done.push("fix");
+
+    /* re-run */
+    renderPipeline("run", done);
+    await sleep(350);
+    await typeOut(`Re-running the full suite to confirm the fix…`, "run");
+    results = await runInSandbox(finalSource, spec.tests);
+    renderTests(results);
+    passed = results.filter(r=>r.pass).length;
+    failed = results.length - passed;
+    await sleep(200);
+    log("run", `Result: <b style="color:var(--green)">${passed} passed</b>${failed?`, <b style="color:var(--red)">${failed} failed</b>`:''}.`);
+    attempt++;
+  }
+  iterBadge.innerHTML = "";
+
+  /* ── 6. SHIP ── */
+  if(failed===0){
+    if(!done.includes("fix") && attempt===1){ /* passed first try, mark fix skipped */ }
+    done.push("ship");
+    renderPipeline("ship", done);
+    await sleep(300);
+    await typeOut(`All tests green. Finalising and shipping the verified function.`, "ship");
+    const area = document.getElementById("testArea");
+    if(area){
+      const v = document.createElement("div");
+      v.className = "verdict win";
+      v.innerHTML = `<span class="vt">✓ shipped — task complete</span>
+        Autonomously delivered a verified <code>${spec.name}()</code> with a passing test suite${done.includes("fix")?', after self-diagnosing and repairing 1 bug':' on the first attempt'}.
+        <div class="vstat">
+          <div><b>${spec.tests.length}</b> tests</div>
+          <div><b>${passed}/${spec.tests.length}</b> passing</div>
+          <div><b>${done.includes("fix")?2:1}</b> iteration${done.includes("fix")?'s':''}</div>
+          <div><b>0</b> human edits</div>
+        </div>`;
+      area.appendChild(v);
+      area.scrollIntoView({behavior:"smooth", block:"end"});
+    }
+    statusText.textContent = "shipped ✓";
+  } else {
+    renderPipeline("fix", done);
+    await typeOut(`Could not converge within the retry budget. Escalating to a human reviewer.`, "fix");
+    statusText.textContent = "escalated";
+  }
+
+  statusDot.classList.remove("live");
+  runBtn.disabled = false; runBtn.textContent = "▶ Dispatch Agent";
+  running = false;
+}
+
+runBtn.addEventListener("click", dispatch);
+taskEl.addEventListener("keydown", e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter") dispatch(); });
+</script>
+</body>
+</html>

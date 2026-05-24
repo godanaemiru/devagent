@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DEVAGENT // autonomous coding coworker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo">DEV<b>AGENT</b></div>
+      <span class="tag">autonomous coding coworker</span>
+    </div>
+    <div class="header-right">
+      <div class="status">
+        <span id="statusText">idle</span>
+        <span class="dot" id="statusDot"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- LEFT CONTROL -->
+    <aside class="left">
+      <div class="left-top">
+        <div>
+          <div class="sec-label">// the task</div>
+          <textarea id="task" placeholder="Describe a coding task in plain English…">Write a function that takes a sentence and returns it with each word capitalized (title case), preserving the original spacing.</textarea>
+        </div>
+
+        <div>
+          <div class="sec-label">// or pick a job ticket</div>
+          <div class="presets" id="presets"></div>
+        </div>
+
+        <button class="run" id="runBtn">&#9654; Dispatch Agent</button>
+
+        <div class="meta">
+          <span class="chip">multi-step loop</span>
+          <span class="chip">server sandbox</span>
+          <span class="chip">self-repair</span>
+          <span class="chip">history</span>
+        </div>
+      </div>
+
+      <div class="history-panel">
+        <div class="history-header">
+          <span class="sec-label" style="margin:0">// task history</span>
+          <button class="hist-clear-all" id="clearAllBtn" title="Clear all history">clear all</button>
+        </div>
+        <div class="history-list" id="history-list">
+          <div class="hist-empty">No tasks yet. Dispatch your first agent.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT THEATRE -->
+    <section class="right">
+      <div class="pipeline" id="pipeline"></div>
+      <div class="theatre">
+        <div class="col">
+          <div class="col-head"><span>// agent reasoning log</span><span id="iterBadge"></span></div>
+          <div class="col-body" id="log">
+            <div class="empty"><span class="big">awaiting dispatch</span>Describe a task and hit <b style="color:var(--acid)">Dispatch Agent</b>. Watch it plan, code, test, fail, and fix itself — autonomously.</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="col-head"><span>// workspace</span><span id="wsLabel" style="color:var(--dim)">—</span></div>
+          <div class="col-body" id="workspace">
+            <div class="empty"><span class="big">empty workspace</span>Generated source &amp; live test results appear here.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+<script src="app.js" defer></script>
+</body>
+</html>
