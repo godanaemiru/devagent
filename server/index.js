@@ -48,7 +48,9 @@ app.post('/api/tasks/run', async (req, res) => {
     'Cache-Control': 'no-cache',
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no',
+    'Transfer-Encoding': 'chunked',
   });
+  res.flushHeaders();
 
   let aborted = false;
   res.on('close', () => { aborted = true; });
@@ -219,7 +221,9 @@ app.post('/api/tasks/run', async (req, res) => {
   res.end();
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`DEVAGENT → http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`DEVAGENT → http://localhost:${PORT}`));
+}
+
+module.exports = app;
