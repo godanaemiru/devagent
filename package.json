@@ -7,9 +7,11 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "express": "^4.21.2",
-    "openai": "^4.98.0",
     "dotenv": "^16.4.7"
   }
 }
