@@ -1,7 +1,15 @@
 'use strict';
 const https = require('https');
 
-const MODEL = 'llama-3.3-70b-versatile';
+// llama-3.3-70b-versatile was shut down on Groq (2026-08-16); override with GROQ_MODEL if needed.
+const MODEL = (process.env.GROQ_MODEL || 'openai/gpt-oss-120b').trim();
+
+function modelParams(maxTokens) {
+  const params = { model: MODEL, max_tokens: maxTokens };
+  // gpt-oss models spend tokens on reasoning; keep it light so output isn't truncated.
+  if (MODEL.startsWith('openai/gpt-oss')) params.reasoning_effort = 'low';
+  return params;
+}
 
 function stripFences(text) {
   return text
@@ -30,8 +38,7 @@ function parseJSON(text) {
 function groqPost(messages, maxTokens) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
+      ...modelParams(maxTokens),
       messages,
     });
     const req = https.request({
@@ -63,8 +70,7 @@ function groqPost(messages, maxTokens) {
 function groqStream(messages, maxTokens, onToken) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
+      ...modelParams(maxTokens),
       stream: true,
       messages,
     });
